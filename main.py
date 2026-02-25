@@ -351,14 +351,17 @@ def _normalize_formats(formats: Sequence[str], all_formats: bool) -> List[str]:
 
 def run_conversion(
     input_path: Path,
-    outdir: Path,
+    outdir: Optional[Path],
     formats: Sequence[str],
     all_formats: bool,
     selected_surfaces: Optional[Sequence[str]],
-    prefix: str,
+    prefix: Optional[str],
     index: bool,
 ) -> int:
     fmts = _normalize_formats(formats=formats, all_formats=all_formats)
+    default_stem = sanitize_filename(input_path.stem)
+    effective_outdir = outdir if outdir is not None else Path(default_stem)
+    effective_prefix = prefix if prefix is not None else default_stem
 
     if not HAS_PYMESH_API:
         typer.echo(
@@ -366,7 +369,7 @@ def run_conversion(
             err=True,
         )
 
-    os.makedirs(outdir, exist_ok=True)
+    os.makedirs(effective_outdir, exist_ok=True)
 
     try:
         tree = ET.parse(input_path)
@@ -401,11 +404,11 @@ def run_conversion(
         base = sanitize_filename(name)
         if index:
             base = f"{idx:03d}_{base}"
-        if prefix:
-            base = f"{sanitize_filename(prefix)}_{base}"
+        if effective_prefix:
+            base = f"{sanitize_filename(effective_prefix)}_{base}"
 
         for ext in fmts:
-            out_path = os.path.join(outdir, f"{base}.{ext}")
+            out_path = os.path.join(effective_outdir, f"{base}.{ext}")
             try:
                 export_mesh(V, F, out_path, name)
                 typer.echo(f"  wrote: {out_path}")
@@ -432,12 +435,12 @@ def main(
         resolve_path=True,
         help="Path to a LandXML file (.xml).",
     ),
-    outdir: Path = typer.Option(
-        Path("out_meshes"),
+    outdir: Optional[Path] = typer.Option(
+        None,
         "--outdir",
         "-o",
         resolve_path=True,
-        help="Output directory for generated meshes.",
+        help="Output directory for generated meshes. Defaults to input filename stem.",
     ),
     formats: List[str] = typer.Option(
         ["obj"],
@@ -456,10 +459,10 @@ def main(
         "-s",
         help="Only export named surface(s). Repeat to include multiple surfaces.",
     ),
-    prefix: str = typer.Option(
-        "",
+    prefix: Optional[str] = typer.Option(
+        None,
         "--prefix",
-        help="Optional filename prefix for each exported surface.",
+        help="Filename prefix for exported surfaces. Defaults to input filename stem.",
     ),
     index: bool = typer.Option(
         False,
