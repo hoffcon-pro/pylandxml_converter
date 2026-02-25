@@ -332,6 +332,11 @@ def export_mesh(
         _write_medit_mesh(V, F, out_path)
 
 
+def _flip_face_winding(F: NDArray[np.int64]) -> NDArray[np.int64]:
+    """Return a copy of faces with winding reversed (flips normals)."""
+    return F[:, [0, 2, 1]]
+
+
 # -----------------------------
 # CLI
 # -----------------------------
@@ -358,6 +363,7 @@ def run_conversion(
     prefix: Optional[str],
     index: bool,
     list_surfaces: bool,
+    flip_normals: bool,
 ) -> int:
     default_stem = sanitize_filename(input_path.stem)
     effective_outdir = outdir if outdir is not None else Path(default_stem)
@@ -407,6 +413,8 @@ def run_conversion(
             continue
 
         V, F = parsed
+        if flip_normals:
+            F = _flip_face_winding(F)
         base = sanitize_filename(name)
         if index:
             base = f"{idx:03d}_{base}"
@@ -480,6 +488,11 @@ def main(
         "--list-surfaces",
         help="List surfaces in the input file and exit without conversion.",
     ),
+    flip_normals: bool = typer.Option(
+        False,
+        "--flip-normals",
+        help="Flip output mesh normals by reversing triangle winding.",
+    ),
 ) -> None:
     """
     Convert LandXML surface geometry into 3D mesh files.
@@ -493,6 +506,7 @@ def main(
       python main.py 3-AWC66.00_PR.xml --all-formats
       python main.py 3-AWC66.00_PR.xml -s "Existing Ground" -s "Design"
       python main.py 3-AWC66.00_PR.xml --list-surfaces
+      python main.py 3-AWC66.00_PR.xml -f obj --flip-normals
     """
     exit_code = run_conversion(
         input_path=input_path,
@@ -503,6 +517,7 @@ def main(
         prefix=prefix,
         index=index,
         list_surfaces=list_surfaces,
+        flip_normals=flip_normals,
     )
     raise typer.Exit(code=exit_code)
 
