@@ -357,19 +357,11 @@ def run_conversion(
     selected_surfaces: Optional[Sequence[str]],
     prefix: Optional[str],
     index: bool,
+    list_surfaces: bool,
 ) -> int:
-    fmts = _normalize_formats(formats=formats, all_formats=all_formats)
     default_stem = sanitize_filename(input_path.stem)
     effective_outdir = outdir if outdir is not None else Path(default_stem)
     effective_prefix = prefix if prefix is not None else default_stem
-
-    if not HAS_PYMESH_API:
-        typer.echo(
-            "warning: full PyMesh API not detected; using built-in format writers.",
-            err=True,
-        )
-
-    os.makedirs(effective_outdir, exist_ok=True)
 
     try:
         tree = ET.parse(input_path)
@@ -385,6 +377,20 @@ def run_conversion(
         typer.echo("ERROR: No <Surface> elements found in the file.", err=True)
         return 1
 
+    if list_surfaces:
+        typer.echo(f"Found {len(surface_elements)} surface(s):")
+        for idx, s_el in enumerate(surface_elements, start=1):
+            typer.echo(f"{idx}. {surface_name(s_el)}")
+        return 0
+
+    if not HAS_PYMESH_API:
+        typer.echo(
+            "warning: full PyMesh API not detected; using built-in format writers.",
+            err=True,
+        )
+
+    fmts = _normalize_formats(formats=formats, all_formats=all_formats)
+    os.makedirs(effective_outdir, exist_ok=True)
     wanted = set(selected_surfaces) if selected_surfaces else None
 
     exported_any = False
@@ -469,6 +475,11 @@ def main(
         "--index/--no-index",
         help="Prefix output names with a stable numeric index.",
     ),
+    list_surfaces: bool = typer.Option(
+        False,
+        "--list-surfaces",
+        help="List surfaces in the input file and exit without conversion.",
+    ),
 ) -> None:
     """
     Convert LandXML surface geometry into 3D mesh files.
@@ -481,6 +492,7 @@ def main(
       python main.py 3-AWC66.00_PR.xml -o out -f obj -f ply
       python main.py 3-AWC66.00_PR.xml --all-formats
       python main.py 3-AWC66.00_PR.xml -s "Existing Ground" -s "Design"
+      python main.py 3-AWC66.00_PR.xml --list-surfaces
     """
     exit_code = run_conversion(
         input_path=input_path,
@@ -490,6 +502,7 @@ def main(
         selected_surfaces=surfaces,
         prefix=prefix,
         index=index,
+        list_surfaces=list_surfaces,
     )
     raise typer.Exit(code=exit_code)
 
