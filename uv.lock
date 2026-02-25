@@ -147,25 +147,14 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "numpy" },
-    { name = "pymesh" },
     { name = "typer" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pymesh", specifier = ">=1.0.2" },
     { name = "typer", specifier = ">=0.12.5" },
 ]
-
-[[package]]
-name = "pymesh"
-version = "1.0.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/94/ca/5a49647246c189856a5fb7d36382893330788035d7734b1447e05641baa6/pymesh-1.0.2.tar.gz", hash = "sha256:7032cd5c53cd9d93b31b6033bfdf7a61ca482ce4dc10d70411a1f392df095deb", size = 5187 }
 
 [[package]]
 name = "rich"

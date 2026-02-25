@@ -436,12 +436,6 @@ def run_conversion(
             typer.echo(f"{idx}. {surface_name(s_el)}")
         return 0
 
-    if not HAS_PYMESH_API:
-        typer.echo(
-            "warning: full PyMesh API not detected; using built-in format writers.",
-            err=True,
-        )
-
     fmts = _normalize_formats(formats=formats, all_formats=all_formats)
     os.makedirs(effective_outdir, exist_ok=True)
     wanted = set(selected_surfaces) if selected_surfaces else None
