@@ -337,6 +337,48 @@ def _flip_face_winding(F: NDArray[np.int64]) -> NDArray[np.int64]:
     return F[:, [0, 2, 1]]
 
 
+def _normalize_origin_mode(origin_mode: str) -> str:
+    mode = origin_mode.strip().lower()
+    allowed = {"none", "centroid", "bottom-left"}
+    if mode not in allowed:
+        allowed_text = ", ".join(sorted(allowed))
+        raise typer.BadParameter(f"Invalid --origin-mode '{origin_mode}'. Choose from: {allowed_text}")
+    return mode
+
+
+def _transform_vertices(
+    V: NDArray[np.float64],
+    origin_mode: str,
+    offset_x: float,
+    offset_y: float,
+    offset_z: float,
+    scale: float,
+) -> NDArray[np.float64]:
+    """
+    Apply coordinate transforms in this order:
+    1) origin shift (`none` | `centroid` | `bottom-left`)
+    2) uniform scale
+    3) translation offset
+    """
+    if scale == 0:
+        raise typer.BadParameter("--scale must be non-zero.")
+
+    out = V.copy()
+    mode = _normalize_origin_mode(origin_mode)
+    if mode == "centroid":
+        out = out - out.mean(axis=0)
+    elif mode == "bottom-left":
+        # Shift XY so minimum x/y are 0. Z remains unchanged.
+        out[:, 0] = out[:, 0] - float(np.min(out[:, 0]))
+        out[:, 1] = out[:, 1] - float(np.min(out[:, 1]))
+
+    out = out * float(scale)
+    out[:, 0] = out[:, 0] + float(offset_x)
+    out[:, 1] = out[:, 1] + float(offset_y)
+    out[:, 2] = out[:, 2] + float(offset_z)
+    return out
+
+
 # -----------------------------
 # CLI
 # -----------------------------
@@ -364,6 +406,11 @@ def run_conversion(
     index: bool,
     list_surfaces: bool,
     flip_normals: bool,
+    origin_mode: str,
+    offset_x: float,
+    offset_y: float,
+    offset_z: float,
+    scale: float,
 ) -> int:
     default_stem = sanitize_filename(input_path.stem)
     effective_outdir = outdir if outdir is not None else Path(default_stem)
@@ -413,6 +460,14 @@ def run_conversion(
             continue
 
         V, F = parsed
+        V = _transform_vertices(
+            V=V,
+            origin_mode=origin_mode,
+            offset_x=offset_x,
+            offset_y=offset_y,
+            offset_z=offset_z,
+            scale=scale,
+        )
         if flip_normals:
             F = _flip_face_winding(F)
         base = sanitize_filename(name)
@@ -493,6 +548,31 @@ def main(
         "--flip-normals",
         help="Flip output mesh normals by reversing triangle winding.",
     ),
+    origin_mode: str = typer.Option(
+        "none",
+        "--origin-mode",
+        help="Origin placement: none, centroid, or bottom-left (min x/y -> 0).",
+    ),
+    offset_x: float = typer.Option(
+        0.0,
+        "--offset-x",
+        help="Additive x translation applied after origin shift and scale.",
+    ),
+    offset_y: float = typer.Option(
+        0.0,
+        "--offset-y",
+        help="Additive y translation applied after origin shift and scale.",
+    ),
+    offset_z: float = typer.Option(
+        0.0,
+        "--offset-z",
+        help="Additive z translation applied after origin shift and scale.",
+    ),
+    scale: float = typer.Option(
+        1.0,
+        "--scale",
+        help="Uniform scale factor applied after origin shift.",
+    ),
 ) -> None:
     """
     Convert LandXML surface geometry into 3D mesh files.
@@ -507,6 +587,8 @@ def main(
       python main.py 3-AWC66.00_PR.xml -s "Existing Ground" -s "Design"
       python main.py 3-AWC66.00_PR.xml --list-surfaces
       python main.py 3-AWC66.00_PR.xml -f obj --flip-normals
+      python main.py 3-AWC66.00_PR.xml --origin-mode centroid --scale 0.001
+      python main.py 3-AWC66.00_PR.xml --origin-mode bottom-left --offset-x 10 --offset-y 20
     """
     exit_code = run_conversion(
         input_path=input_path,
@@ -518,6 +600,11 @@ def main(
         index=index,
         list_surfaces=list_surfaces,
         flip_normals=flip_normals,
+        origin_mode=origin_mode,
+        offset_x=offset_x,
+        offset_y=offset_y,
+        offset_z=offset_z,
+        scale=scale,
     )
     raise typer.Exit(code=exit_code)
 
