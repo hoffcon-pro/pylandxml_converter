@@ -63,6 +63,12 @@ Flip normals:
 uv run python landxml_convert.py 3-AWC66.00_PR.xml --flip-normals
 ```
 
+Swap x/y coordinates:
+
+```powershell
+uv run python landxml_convert.py 3-AWC66.00_PR.xml --swap-xy
+```
+
 Apply origin/offset/scale transforms:
 
 ```powershell
@@ -98,6 +104,7 @@ You can override:
 - `--index / --no-index`: Prefix files with numeric order.
 - `--list-surfaces`: Print surfaces and exit.
 - `--flip-normals`: Reverse triangle winding.
+- `--swap-xy`: Swap x and y coordinates before other transforms.
 - `--origin-mode TEXT`: `none`, `centroid`, `bottom-left`.
 - `--offset-x FLOAT`: X translation after origin shift and scale.
 - `--offset-y FLOAT`: Y translation after origin shift and scale.

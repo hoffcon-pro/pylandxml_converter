@@ -348,6 +348,7 @@ def _normalize_origin_mode(origin_mode: str) -> str:
 
 def _transform_vertices(
     V: NDArray[np.float64],
+    swap_xy: bool,
     origin_mode: str,
     offset_x: float,
     offset_y: float,
@@ -356,14 +357,18 @@ def _transform_vertices(
 ) -> NDArray[np.float64]:
     """
     Apply coordinate transforms in this order:
-    1) origin shift (`none` | `centroid` | `bottom-left`)
-    2) uniform scale
-    3) translation offset
+    1) optional XY swap
+    2) origin shift (`none` | `centroid` | `bottom-left`)
+    3) uniform scale
+    4) translation offset
     """
     if scale == 0:
         raise typer.BadParameter("--scale must be non-zero.")
 
     out = V.copy()
+    if swap_xy:
+        out[:, [0, 1]] = out[:, [1, 0]]
+
     mode = _normalize_origin_mode(origin_mode)
     if mode == "centroid":
         out = out - out.mean(axis=0)
@@ -406,6 +411,7 @@ def run_conversion(
     index: bool,
     list_surfaces: bool,
     flip_normals: bool,
+    swap_xy: bool,
     origin_mode: str,
     offset_x: float,
     offset_y: float,
@@ -456,6 +462,7 @@ def run_conversion(
         V, F = parsed
         V = _transform_vertices(
             V=V,
+            swap_xy=swap_xy,
             origin_mode=origin_mode,
             offset_x=offset_x,
             offset_y=offset_y,
@@ -542,6 +549,11 @@ def main(
         "--flip-normals",
         help="Flip output mesh normals by reversing triangle winding.",
     ),
+    swap_xy: bool = typer.Option(
+        False,
+        "--swap-xy",
+        help="Swap x and y coordinates before origin/scale/offset transforms.",
+    ),
     origin_mode: str = typer.Option(
         "none",
         "--origin-mode",
@@ -581,6 +593,7 @@ def main(
       python landxml_convert.py 3-AWC66.00_PR.xml -s "Existing Ground" -s "Design"
       python landxml_convert.py 3-AWC66.00_PR.xml --list-surfaces
       python landxml_convert.py 3-AWC66.00_PR.xml -f obj --flip-normals
+      python landxml_convert.py 3-AWC66.00_PR.xml --swap-xy
       python landxml_convert.py 3-AWC66.00_PR.xml --origin-mode centroid --scale 0.001
       python landxml_convert.py 3-AWC66.00_PR.xml --origin-mode bottom-left --offset-x 10 --offset-y 20
     """
@@ -594,6 +607,7 @@ def main(
         index=index,
         list_surfaces=list_surfaces,
         flip_normals=flip_normals,
+        swap_xy=swap_xy,
         origin_mode=origin_mode,
         offset_x=offset_x,
         offset_y=offset_y,
